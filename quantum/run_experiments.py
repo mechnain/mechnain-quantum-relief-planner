@@ -376,7 +376,25 @@ def main() -> None:
     def execute(prog: core.QProg, n_qubits: int) -> dict[str, int]:
         return normalize(raw_run(prog, args.shots), n_qubits, bit_order)
 
-    results = []
+    results: list[dict] = []
+    out_path = Path(args.out)
+
+    def flush() -> None:
+        """Merge the results so far into the output file. Called after each experiment so a
+        slow or interrupted hardware run still saves whatever has already completed."""
+        existing: dict[str, dict] = {}
+        if out_path.exists():
+            try:
+                for entry in json.loads(out_path.read_text(encoding="utf-8")):
+                    existing[entry["experiment"]] = entry
+            except (json.JSONDecodeError, KeyError, TypeError):
+                print(f"warning: could not parse existing {out_path}; it will be overwritten")
+        for entry in results:
+            existing[entry["experiment"]] = entry
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(list(existing.values()), indent=2), encoding="utf-8")
+        print(f"  saved -> {out_path}")
+
     today = date.today().isoformat()
 
     if "randomness" in args.experiments:
@@ -396,6 +414,7 @@ def main() -> None:
             }
         )
         print("  counts:", dict(sorted(counts.items())))
+        flush()
 
     if "ghz" in args.experiments:
         print("\n[B] GHZ correlation (3 qubits)")
@@ -414,6 +433,7 @@ def main() -> None:
         )
         leak = sum(c for k, c in counts.items() if k not in ("000", "111")) / max(1, sum(counts.values()))
         print(f"  counts: {dict(sorted(counts.items()))}\n  probability outside 000/111: {leak:.1%}")
+        flush()
 
     if "maxcut" in args.experiments:
         print("\n[C] MaxCut QAOA p=1 (5 nodes) — picking angles on the local simulator…")
@@ -452,22 +472,9 @@ def main() -> None:
                 "limitations": SHARED_LIMITATION,
             }
         )
+        flush()
 
-    # Merge with any existing file so experiments can be run one at a time.
-    out_path = Path(args.out)
-    existing: dict[str, dict] = {}
-    if out_path.exists():
-        try:
-            for entry in json.loads(out_path.read_text(encoding="utf-8")):
-                existing[entry["experiment"]] = entry
-        except (json.JSONDecodeError, KeyError, TypeError):
-            print(f"warning: could not parse existing {out_path}; it will be overwritten")
-    for entry in results:
-        existing[entry["experiment"]] = entry
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(list(existing.values()), indent=2), encoding="utf-8")
-    print(f"\nWrote {out_path}")
+    print(f"\nDone. Results in {out_path}.")
     print("Commit and push this file to publish the results on the live site, "
           "or paste an entry into the app's admin panel.")
 
