@@ -1,14 +1,21 @@
 import { MethodExplanation } from '../components/MethodExplanation';
+import { PlainTerms } from '../components/PlainTerms';
 
 export function MethodsPage() {
   return (
     <main id="main" className="page page-narrow">
       <p className="kicker">Methods · Transparency</p>
-      <h1>How every number is calculated</h1>
+      <h1>How every number is worked out</h1>
       <p className="lede">
-        The planner is deterministic: the same inputs always produce the same plan. This page spells
-        out each formula in simple language so any allocation can be checked by hand.
+        Same inputs, same plan, every time — nothing here is random or hidden. Each section gives
+        you the plain-English version first, with the exact formula underneath if you want to check
+        the maths yourself.
       </p>
+      <PlainTerms label="Before you dive in" glyph="✓">
+        You don’t need to read the formulas to trust the result. The grey boxes are there for the
+        curious and the careful — skim the words and you’ll still understand exactly why each
+        location got what it got.
+      </PlainTerms>
       <hr className="divider" />
 
       <MethodExplanation

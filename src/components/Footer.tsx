@@ -2,6 +2,9 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="footer-inner">
+        <div className="footer-mark">
+          MECHNAIN<span className="accent">·</span>LABS
+        </div>
         <div>
           <strong>Built by Mechnain Labs</strong> — an independent engineering lab.
         </div>

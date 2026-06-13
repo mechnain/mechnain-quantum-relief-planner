@@ -12,6 +12,7 @@ import {
 import { QuantumExperimentCard } from '../components/QuantumExperimentCard';
 import { PasteResultsPanel } from '../components/PasteResultsPanel';
 import { WarningBanner } from '../components/WarningBanner';
+import { PlainTerms } from '../components/PlainTerms';
 
 /** Static SVG of the 5-node MaxCut instance, with the optimal split shown by shape + label. */
 function MaxCutGraph() {
@@ -159,12 +160,19 @@ export function QuantumPage() {
         </span>
       </h1>
       <p className="lede">
-        The practical planner on this site uses classical optimization — at the sizes that matter
-        for real coordinators, classical methods are exact and instant. This page is a small
-        educational demonstration of how tiny versions of planning problems can be represented as
-        quantum circuits and run on real hardware (Origin Wukong, 180-qubit class). It does not
-        prove quantum advantage, and we do not claim any.
+        The real planner on this site uses ordinary maths — fast, exact, and reliable. This page is
+        a separate, curious side-project: a look at how a <em>tiny</em> version of a planning problem
+        can be run on a real quantum computer (Origin Wukong). It’s here to teach, not to sell. There
+        is no quantum advantage at this scale, and we don’t pretend otherwise.
       </p>
+
+      <PlainTerms label="What this page is" glyph="⚛">
+        Think of it as a science-fair exhibit sitting next to the working tool. We shrink a real
+        allocation question down to something a small quantum chip can handle, run it, and compare
+        the result against the known right answer. Sometimes the chip nails it; sometimes noise
+        throws it off — and <strong>we show both honestly</strong>, because the wobble is the
+        lesson.
+      </PlainTerms>
 
       <WarningBanner kind="info">
         <strong>How to read this page:</strong> every measured result below is labeled with its

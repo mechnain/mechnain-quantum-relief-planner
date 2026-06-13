@@ -10,6 +10,8 @@ export interface QuantumExperimentMeta {
   title: string;
   tagline: string;
   qubits: number;
+  /** One-sentence, jargon-free summary shown as a callout at the top of the card. */
+  plain: string;
   explanation: string[];
   teaches: string[];
   limitations: string[];
@@ -21,6 +23,8 @@ export const QUANTUM_EXPERIMENTS: QuantumExperimentMeta[] = [
     title: 'A — Quantum Randomness',
     tagline: 'Using measurement randomness as a transparent tie-breaker',
     qubits: 3,
+    plain:
+      'A quantum coin-flip. We ask the chip for a truly random number — handy when two locations are equally deserving and you need a fair, un-riggable way to pick one.',
     explanation: [
       'Three qubits are put into equal superposition with Hadamard gates and measured. Each of the 8 outcomes (000–111) should appear with equal probability — a physically random draw, not a pseudo-random one.',
       'In allocation work, a verifiably fair random draw is occasionally useful: breaking a tie between two equally-deserving locations, or ordering a waitlist without favoritism. This circuit is the smallest honest version of that idea.',
@@ -40,6 +44,8 @@ export const QUANTUM_EXPERIMENTS: QuantumExperimentMeta[] = [
     title: 'B — Bell/GHZ Correlation',
     tagline: 'Entanglement, and what hardware noise actually looks like',
     qubits: 3,
+    plain:
+      'A stress-test for honesty. We set up three qubits that should only ever answer “all 0s” or “all 1s.” Anything else the chip reports is noise — so this shows you exactly how trustworthy today’s hardware is.',
     explanation: [
       'A GHZ circuit entangles three qubits: ideally, every measurement returns 000 or 111, each about half the time. The qubits act as one correlated system — no mixture of independent coins can reproduce this.',
       'On real hardware, gate errors and decoherence leak probability into the other six outcomes. The size of that leakage is an honest, direct measurement of device quality.',
@@ -59,6 +65,8 @@ export const QUANTUM_EXPERIMENTS: QuantumExperimentMeta[] = [
     title: 'C — MaxCut / QAOA Toy Allocation',
     tagline: 'A tiny allocation tradeoff encoded as a graph problem',
     qubits: 5,
+    plain:
+      'The real thing, shrunk down. Five locations need splitting into two delivery days so the worst clashes don’t collide. We hand that puzzle to the quantum chip and check whether it finds the same answer we already know is best.',
     explanation: [
       'Five locations become five graph nodes. An edge connects two locations when serving them in the same delivery group is costly — shared route congestion, same-day volunteer conflicts, or overlapping need spikes. Edge weight = how bad the conflict is.',
       'Splitting the locations into two delivery groups (day 1 vs day 2) so the heaviest conflicts are separated is the MaxCut problem. Each bitstring is a split: bit i says which group location i joins.',

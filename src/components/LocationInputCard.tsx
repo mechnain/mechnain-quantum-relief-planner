@@ -21,8 +21,12 @@ export function LocationInputCard({ index, location, unit, canRemove, onChange, 
   return (
     <div className="card" style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
-        <h3 style={{ margin: 0 }}>
-          <span className="kicker" style={{ display: 'inline', marginRight: '0.5rem' }}>
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: '0.55rem' }}>
+          <span
+            className="mono"
+            style={{ fontSize: '0.85rem', color: 'var(--bronze)', fontWeight: 600 }}
+            aria-hidden="true"
+          >
             {String(index + 1).padStart(2, '0')}
           </span>
           {location.name.trim() || `Location ${index + 1}`}

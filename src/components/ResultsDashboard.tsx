@@ -7,6 +7,7 @@ import { LocationResultCard } from './LocationResultCard';
 import { FairnessScoreCard } from './FairnessScoreCard';
 import { BarChart } from './BarChart';
 import { WarningBanner } from './WarningBanner';
+import { PlainTerms } from './PlainTerms';
 
 interface Props {
   result: PlanResult;
@@ -107,6 +108,12 @@ export function ResultsDashboard({ result, diff }: Props) {
 
       {/* Fairness indicators */}
       <h2>Fairness &amp; coverage indicators</h2>
+      <PlainTerms label="Reading these scores">
+        The <strong>fairness score</strong> asks “did everyone get a similar share of what they
+        needed?” — 1.00 means perfectly even. <strong>Urgency coverage</strong> asks “did the most
+        urgent places get looked after?” Neither is a grade for the plan; they just show what your
+        chosen rule actually did, so you can decide if it feels right.
+      </PlainTerms>
       <div className="grid-2">
         <FairnessScoreCard
           label="Fairness score (Jain index)"

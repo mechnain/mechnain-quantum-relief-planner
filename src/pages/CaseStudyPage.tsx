@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { CaseStudySection } from '../components/CaseStudySection';
+import { PlainTerms } from '../components/PlainTerms';
 
 export function CaseStudyPage() {
   let n = 0;
@@ -12,6 +13,13 @@ export function CaseStudyPage() {
         How we built a working public-impact planning tool, then used it as a transparent vehicle to
         show what near-term quantum hardware can and cannot do.
       </p>
+      <PlainTerms label="The short version" glyph="❝">
+        We built a genuinely useful tool for sharing out scarce supplies fairly — then bolted on a
+        small, honest quantum experiment beside it to show what today’s quantum computers really can
+        and can’t do. The useful part is ordinary maths. The quantum part is a teaching exhibit. We
+        never blur the line between them.
+      </PlainTerms>
+
       <hr className="divider" />
 
       <CaseStudySection index={next()} title="Summary">

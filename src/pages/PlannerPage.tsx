@@ -12,8 +12,9 @@ export function PlannerPage() {
       <p className="kicker">Planner</p>
       <h1>Describe your scenario</h1>
       <p className="lede">
-        Enter what you have and where it needs to go. Choose a fairness rule, and the planner
-        computes a deterministic, explainable allocation. Your inputs stay in your browser.
+        Enter what you have and where it needs to go, then pick a fairness rule. You’ll get a clear
+        allocation with a reason for every number — and the same inputs always give the same plan.
+        Nothing leaves your browser. New here? Load a sample below and press calculate.
       </p>
       <hr className="divider" />
       <ScenarioForm

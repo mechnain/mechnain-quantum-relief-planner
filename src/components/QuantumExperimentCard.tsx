@@ -1,6 +1,7 @@
 import type { QuantumResultData } from '../types';
 import type { QuantumExperimentMeta } from '../data/quantumSamples';
 import { QuantumCountsChart } from './QuantumCountsChart';
+import { PlainTerms } from './PlainTerms';
 
 interface Props {
   meta: QuantumExperimentMeta;
@@ -20,6 +21,8 @@ export function QuantumExperimentCard({ meta, ideal, hardware, children }: Props
         <span className="badge">{meta.qubits} qubits</span>
       </div>
       <p style={{ color: 'var(--text-muted)', marginTop: '0.4rem' }}>{meta.tagline}</p>
+
+      <PlainTerms>{meta.plain}</PlainTerms>
 
       <h4 style={{ margin: '1.2rem 0 0.3rem' }}>What this circuit does</h4>
       {meta.explanation.map((p) => (
