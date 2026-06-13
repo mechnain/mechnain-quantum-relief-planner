@@ -213,14 +213,37 @@ def pick_qaoa_angles(
 
 # ---------------------------------------------------------------- backends
 
+def load_env_file() -> None:
+    """Load KEY=VALUE lines from quantum/.env.local into os.environ if present.
+
+    This keeps the secret API key in a local, git-ignored file — it never needs
+    to be typed on the command line, pasted into a chat, or committed.
+    """
+    env_path = Path(__file__).resolve().parent / ".env.local"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 def get_cloud_backend(name: str):
     from pyqpanda3.qcloud import QCloudService
 
+    load_env_file()
     api_key = os.environ.get("QPANDA3_API_KEY") or os.environ.get("ORIGINQC_API_KEY")
     if not api_key:
         sys.exit(
-            "No API key found. Set QPANDA3_API_KEY (from your account at "
-            "https://account.originqc.com.cn/) and retry."
+            "No API key found. Either create quantum/.env.local with a line\n"
+            "  QPANDA3_API_KEY=your-key\n"
+            "or set the QPANDA3_API_KEY environment variable. Get the key from your\n"
+            "account at https://account.originqc.com.cn/ — never commit it."
         )
     service = QCloudService(api_key)
     try:

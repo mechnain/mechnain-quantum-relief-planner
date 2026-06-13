@@ -14,7 +14,17 @@ Your API key never touches the repository or the published site.
 pip install -r requirements.txt
 ```
 
-Get your API key from the user center at https://account.originqc.com.cn/ and set it:
+Get your API key from the user center at https://account.originqc.com.cn/.
+
+**Recommended (key never leaves your disk):** copy `.env.example` to `.env.local` and
+paste your key there. `.env.local` is git-ignored, so it is never committed and never
+shown anywhere. The runner loads it automatically.
+
+```bash
+cp .env.example .env.local      # then edit .env.local and paste the key
+```
+
+Or set it as an environment variable for one shell session:
 
 ```powershell
 $env:QPANDA3_API_KEY = "your-key"        # PowerShell
@@ -22,6 +32,11 @@ $env:QPANDA3_API_KEY = "your-key"        # PowerShell
 ```bash
 export QPANDA3_API_KEY=your-key          # bash
 ```
+
+> ⚠️ **Never put this key in any website's code.** Both this planner and mechnainlabs.com
+> are static sites — anything in their frontend is publicly readable, so an embedded key
+> could be stolen and used to run up your quantum-compute usage. The key belongs only on
+> your machine, in `.env.local`. The website only ever receives the harmless result counts.
 
 ## Run
 
