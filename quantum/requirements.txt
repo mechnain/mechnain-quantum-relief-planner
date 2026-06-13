@@ -1,1 +1,11 @@
 pyqpanda3
+
+# Optional: Origin Quantum's official algorithm library (QUBO/QAOA optimizer).
+# When installed, run_experiments.py uses its QAOA optimizer to propose MaxCut
+# angle candidates (re-scored in our own circuit). Omit it and the runner falls
+# back to a deterministic grid search with no loss of function.
+# pyqpanda_alg needs pandas/scipy/scikit-learn as transitive deps.
+pyqpanda_alg
+pandas
+scipy
+scikit-learn

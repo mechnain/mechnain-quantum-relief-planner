@@ -49,6 +49,21 @@ git push
 
 The GitHub Pages workflow redeploys automatically and every visitor sees the real results.
 
+## Optional: Origin's official QAOA optimizer (pyqpanda_alg)
+
+Origin publishes an algorithm library, [`pyqpanda_alg`](https://github.com/OriginQ/pyqpanda-algorithm),
+with a real QUBO→Ising→QAOA variational optimizer. When it is installed, the runner
+uses it to **propose** MaxCut angle candidates. Those candidates are then re-scored in
+our own transparent circuit before any are used, so a convention mismatch or a weak
+variational result can never degrade the demo. Pass `--no-pyqpanda-alg` to skip it and
+use only the deterministic grid search (the runner works the same either way).
+
+An honest finding worth keeping: on this 5-node instance, `pyqpanda_alg`'s p=1
+variational optimizer lands on a sub-optimal cut, while the exhaustive grid search
+reliably finds the true optimum. That is the project's whole thesis in miniature — at
+this scale the classical approach wins, and we show it rather than hide it. The runner
+prints which engine produced the winning angles and records it in the result notes.
+
 ## Honesty rules (enforced by the script)
 
 - The `backend` field in the JSON records what actually ran. Simulator runs are

@@ -143,20 +143,72 @@ def normalize(counts: dict[str, int], n_qubits: int, bit_order: str) -> dict[str
     return out
 
 
-def pick_qaoa_angles(shots: int, bit_order: str) -> tuple[float, float, float]:
-    """Coarse local-simulator grid search for (gamma, beta) maximizing expected cut."""
-    best = (-1.0, 0.0, 0.0)
+def _score_angles(gamma: float, beta: float, shots: int, bit_order: str) -> float:
+    """Expected cut of our own p=1 circuit at these angles, on the local simulator."""
+    counts = normalize(run_local(build_maxcut_qaoa(gamma, beta), shots), MAXCUT_N, bit_order)
+    total = sum(counts.values()) or 1
+    return sum(cut_value(k) * c for k, c in counts.items()) / total
+
+
+def pyqpanda_alg_candidates() -> list[tuple[float, float]]:
+    """Ask Origin's official QAOA optimizer (pyqpanda_alg) for p=1 angle candidates.
+
+    The library uses different gamma/beta conventions than our transparent builder,
+    so we never trust its angles directly: we return them (and sign/order variants)
+    as *candidates* that pick_qaoa_angles() re-scores in our own circuit. Returns []
+    if the library is not installed.
+    """
+    try:
+        import sympy as sp  # noqa: PLC0415
+        from pyqpanda_alg.QAOA import qaoa  # noqa: PLC0415
+    except Exception:
+        return []
+
+    x = sp.symbols(f"x0:{MAXCUT_N}")
+    # Maximize cut == minimize negative cut; edge cut term = w*(xi + xj - 2 xi xj).
+    objective = sp.expand(sum(-w * (x[i] + x[j] - 2 * x[i] * x[j]) for i, j, w in MAXCUT_EDGES))
+    try:
+        _, params, _ = qaoa.QAOA(objective).run(layer=1, shots=2000)
+        g, b = float(params[0]), float(params[1])
+    except Exception as e:
+        print(f"  (pyqpanda_alg candidate generation skipped: {e})")
+        return []
+    # Convention is uncertain, so offer both orderings and mod-pi folds; the
+    # re-scoring step keeps only whatever actually performs in our own circuit.
+    raw = [(g, b), (b, g)]
+    folded = [(gg % math.pi, bb % (math.pi / 2)) for gg, bb in raw]
+    return raw + folded
+
+
+def pick_qaoa_angles(
+    shots: int, bit_order: str, use_pyqpanda_alg: bool
+) -> tuple[float, float, float, str]:
+    """Find (gamma, beta) maximizing our circuit's expected cut.
+
+    Always runs a deterministic coarse grid search (proven, zero extra deps).
+    When use_pyqpanda_alg is set, Origin's official optimizer additionally proposes
+    candidates, which are re-scored in our own circuit. Returns the best of both,
+    plus a label noting which engine produced the winning angles.
+    """
+    best = (-1.0, 0.0, 0.0, "grid search")
     steps = 12
     for gi in range(1, steps):
         for bi in range(1, steps):
             gamma = math.pi * gi / steps
             beta = math.pi / 2 * bi / steps
-            counts = normalize(run_local(build_maxcut_qaoa(gamma, beta), shots), MAXCUT_N, bit_order)
-            total = sum(counts.values()) or 1
-            expected = sum(cut_value(k) * c for k, c in counts.items()) / total
+            expected = _score_angles(gamma, beta, shots, bit_order)
             if expected > best[0]:
-                best = (expected, gamma, beta)
-    return best  # (expected_cut, gamma, beta)
+                best = (expected, gamma, beta, "grid search")
+
+    if use_pyqpanda_alg:
+        candidates = pyqpanda_alg_candidates()
+        if candidates:
+            print(f"  pyqpanda_alg proposed {len(candidates)} angle candidate(s); re-scoring in our circuit…")
+        for gamma, beta in candidates:
+            expected = _score_angles(gamma, beta, shots, bit_order)
+            if expected > best[0]:
+                best = (expected, gamma, beta, "pyqpanda_alg optimizer")
+    return best  # (expected_cut, gamma, beta, engine_label)
 
 
 # ---------------------------------------------------------------- backends
@@ -234,6 +286,12 @@ def main() -> None:
     )
     parser.add_argument("--timeout", type=int, default=1800, help="cloud job timeout in seconds")
     parser.add_argument("--out", default=str(RESULTS_PATH), help="output JSON path (merged)")
+    parser.add_argument(
+        "--no-pyqpanda-alg",
+        action="store_true",
+        help="Skip Origin's official pyqpanda_alg QAOA optimizer for angle proposals "
+        "(by default it is used when installed, with grid search as fallback).",
+    )
     args = parser.parse_args()
 
     bit_order = detect_bit_order()
@@ -294,9 +352,9 @@ def main() -> None:
 
     if "maxcut" in args.experiments:
         print("\n[C] MaxCut QAOA p=1 (5 nodes) — picking angles on the local simulator…")
-        expected, gamma, beta = pick_qaoa_angles(2000, bit_order)
+        expected, gamma, beta, engine = pick_qaoa_angles(2000, bit_order, not args.no_pyqpanda_alg)
         opt_strings, opt_value = brute_force_optimum()
-        print(f"  chosen gamma={gamma:.3f}, beta={beta:.3f} (local expected cut {expected:.2f})")
+        print(f"  chosen gamma={gamma:.3f}, beta={beta:.3f} via {engine} (local expected cut {expected:.2f})")
         print(f"  brute-force optimum: {opt_strings} with cut value {opt_value}")
 
         prog = build_maxcut_qaoa(gamma, beta)
@@ -319,8 +377,8 @@ def main() -> None:
                 "counts": counts,
                 "idealCounts": ideal,
                 "notes": (
-                    f"QAOA p=1 with gamma={gamma:.3f}, beta={beta:.3f}, chosen by coarse grid search on a local "
-                    f"simulator. Brute-force optimum: {' / '.join(opt_strings)} (cut value {opt_value}). "
+                    f"QAOA p=1 with gamma={gamma:.3f}, beta={beta:.3f}, chosen by {engine} (re-scored on a local "
+                    f"simulator). Brute-force optimum: {' / '.join(opt_strings)} (cut value {opt_value}). "
                     f"The most-sampled measured bitstring {'matched' if matched else 'did NOT match'} the optimum. "
                     "At this size the classical method is exact and instant; this run demonstrates encoding and workflow only."
                 ),
