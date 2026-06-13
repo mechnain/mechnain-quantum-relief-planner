@@ -47,6 +47,21 @@ RESULTS_PATH = Path(__file__).resolve().parent.parent / "public" / "wukong-resul
 MAXCUT_N = 5
 MAXCUT_EDGES = [(0, 1, 3), (0, 2, 2), (1, 3, 2), (2, 3, 3), (2, 4, 1), (3, 4, 2)]
 
+# Origin QCloud backends that are SIMULATORS (everything else listed by the service
+# is a real QPU). Used so a hardware run is never mislabeled as a simulator, or vice versa.
+CLOUD_SIMULATORS = {"full_amplitude", "partial_amplitude", "single_amplitude"}
+
+
+def backend_description(backend_name: str, is_local: bool) -> str:
+    """Honest, human-readable label for whatever actually ran. Never guesses."""
+    if is_local:
+        return "local simulator (pyqpanda3 CPUQVM — not hardware)"
+    if backend_name in CLOUD_SIMULATORS:
+        return f"Origin QCloud simulator: {backend_name} (not hardware)"
+    if backend_name.upper().startswith("WK"):
+        return f"Origin Wukong hardware ({backend_name})"
+    return f"Origin QCloud hardware ({backend_name})"
+
 SHARED_LIMITATION = (
     "Single run with no error mitigation; one histogram is an anecdote, not a benchmark. "
     "No quantum advantage is demonstrated or claimed."
@@ -114,20 +129,21 @@ def run_local(prog: core.QProg, shots: int) -> dict[str, int]:
     return dict(qvm.result().get_counts())
 
 
-def detect_bit_order() -> str:
+def detect_bit_order(run_fn, shots: int = 200) -> str:
     """Determine whether count keys put qubit 0 on the right ('little') or left ('big').
 
-    Runs X on qubit 0 only; the position of the '1' in the result key tells us
-    the convention, which we then apply to every result (cloud included).
+    Runs X on qubit 0 only and checks where the '1' lands. Detection uses the SAME
+    backend the results come from (run_fn), because the simulator and a real chip can
+    in principle report bits in different orders — this keeps MaxCut bitstrings correct.
     """
     prog = core.QProg()
     prog << core.X(0)
     prog << core.measure([0, 1, 2], [0, 1, 2])
-    counts = run_local(prog, 100)
-    key = max(counts, key=counts.get)
-    if key == "001":
+    counts = run_fn(prog, shots)
+    key = max(counts, key=counts.get).strip().zfill(3)
+    if key[-1] == "1" and key.count("1") == 1:
         return "little"  # qubit 0 is the rightmost character
-    if key == "100":
+    if key[0] == "1" and key.count("1") == 1:
         return "big"  # qubit 0 is the leftmost character
     raise RuntimeError(f"Unexpected bit-order probe result: {counts}")
 
@@ -257,7 +273,8 @@ def run_cloud(backend, name: str, prog: core.QProg, shots: int, timeout_s: int) 
     from pyqpanda3.qcloud import JobStatus, QCloudOptions
 
     kwargs = {}
-    if "wukong" in name:
+    if name not in CLOUD_SIMULATORS:
+        # Real QPU: enable error mitigation, qubit mapping, and circuit optimization.
         try:
             options = QCloudOptions()
             options.set_amend(True)
@@ -288,7 +305,19 @@ def run_cloud(backend, name: str, prog: core.QProg, shots: int, timeout_s: int) 
             )
         time.sleep(5)
 
-    return {k: int(v) for k, v in job.result().get_counts().items()}
+    result = job.result()
+    # QCloudResult.get_counts() returns empty on this SDK/backend; get_probs() is reliable.
+    # Convert the probability distribution back to integer counts using the shot count.
+    counts = {k: int(v) for k, v in result.get_counts().items()}
+    if not counts:
+        probs = result.get_probs()
+        counts = {k: round(p * shots) for k, p in probs.items() if p > 0}
+    if not counts:
+        raise RuntimeError(
+            "Job finished but returned no counts or probabilities. Raw payload: "
+            + str(result.origin_data())[:300]
+        )
+    return counts
 
 
 # ---------------------------------------------------------------- main
@@ -317,22 +346,35 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    bit_order = detect_bit_order()
-    print(f"Bit order convention in counts: qubit 0 is on the {'right' if bit_order == 'little' else 'left'}")
-
     is_local = args.backend == "local"
     backend = None
     if not is_local:
         backend = get_cloud_backend(args.backend)
-        backend_label = f"Origin QCloud: {args.backend}"
-        if "wukong" not in args.backend:
-            backend_label += " (cloud simulator — not hardware)"
+    backend_label = backend_description(args.backend, is_local)
+    print(f"Backend: {backend_label}")
+
+    # Raw execution against the chosen backend (before bit-order normalization).
+    def raw_run(prog: core.QProg, shots: int) -> dict[str, int]:
+        if is_local:
+            return run_local(prog, shots)
+        return run_cloud(backend, args.backend, prog, shots, args.timeout)
+
+    # Bit ordering is a QCloud SDK formatting convention shared across its backends, so
+    # for cloud runs we probe it on the fast cloud simulator (full_amplitude) rather than
+    # spending real-hardware queue time on a probe job. Local runs probe the local QVM.
+    if is_local:
+        bit_order = detect_bit_order(run_local)
+    elif args.backend in CLOUD_SIMULATORS:
+        bit_order = detect_bit_order(raw_run)
     else:
-        backend_label = "local simulator (pyqpanda3 CPUQVM — not hardware)"
+        sim = get_cloud_backend("full_amplitude")
+        bit_order = detect_bit_order(
+            lambda prog, shots: run_cloud(sim, "full_amplitude", prog, shots, args.timeout)
+        )
+    print(f"Bit order convention in counts: qubit 0 is on the {'right' if bit_order == 'little' else 'left'}")
 
     def execute(prog: core.QProg, n_qubits: int) -> dict[str, int]:
-        raw = run_local(prog, args.shots) if is_local else run_cloud(backend, args.backend, prog, args.shots, args.timeout)
-        return normalize(raw, n_qubits, bit_order)
+        return normalize(raw_run(prog, args.shots), n_qubits, bit_order)
 
     results = []
     today = date.today().isoformat()
@@ -384,6 +426,8 @@ def main() -> None:
         counts = execute(prog, MAXCUT_N)
         ideal = normalize(run_local(prog, args.shots), MAXCUT_N, bit_order)
 
+        if not counts:
+            raise RuntimeError("MaxCut run returned no measurement counts; aborting before writing results.")
         top = sorted(counts.items(), key=lambda kv: -kv[1])[:5]
         print("  top measured bitstrings (bit i = node i):")
         for k, c in top:
