@@ -113,6 +113,11 @@ export interface QuantumResultData {
   idealCounts?: Record<string, number>;
   notes?: string;
   limitations?: string;
-  /** True for bundled sample data; false for user-pasted hardware results. */
+  /** True for bundled sample data; false for real run data. */
   isSample: boolean;
+  /**
+   * Where the data came from: bundled sample, pasted in the admin panel,
+   * or published with the site via public/wukong-results.json.
+   */
+  source?: 'sample' | 'pasted' | 'published';
 }

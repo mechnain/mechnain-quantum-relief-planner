@@ -37,7 +37,7 @@ export function QuantumExperimentCard({ meta, ideal, hardware, children }: Props
         </div>
         <div className="card" style={{ background: 'var(--bg-inset)' }}>
           <h4 style={{ marginTop: 0 }}>
-            Hardware result{' '}
+            Measured result{' '}
             {hardware.isSample && (
               <span className="badge badge-sample" style={{ marginLeft: '0.4rem' }}>
                 placeholder — sample data
@@ -45,11 +45,16 @@ export function QuantumExperimentCard({ meta, ideal, hardware, children }: Props
             )}
           </h4>
           <QuantumCountsChart title="Measured distribution" data={hardware} ideal={ideal} />
-          {hardware.isSample && (
+          {hardware.isSample ? (
             <p className="hint">
-              No real hardware result has been pasted for this experiment yet. The numbers above are
+              No real run has been loaded for this experiment yet. The numbers above are
               illustrative sample data in the correct format, never a claim about real device
               behavior.
+            </p>
+          ) : (
+            <p className="hint">
+              Real run data — the backend badge above records exactly what executed (hardware runs
+              and simulator runs are labeled as such, never interchangeably).
             </p>
           )}
         </div>

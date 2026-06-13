@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { usePlanner } from '../state/PlannerContext';
+import type { QuantumExperimentId, QuantumResultData } from '../types';
 import {
+  fetchPublishedResults,
   MAXCUT_EDGES,
   MAXCUT_NODES,
   MAXCUT_OPTIMUM,
@@ -131,6 +134,20 @@ function MaxCutGraph() {
 
 export function QuantumPage() {
   const { pastedQuantum } = usePlanner();
+  const [published, setPublished] = useState<
+    Partial<Record<QuantumExperimentId, QuantumResultData>>
+  >({});
+
+  // Real results published with the site (written by quantum/run_experiments.py).
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublishedResults().then((r) => {
+      if (!cancelled) setPublished(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main id="main" className="page">
@@ -150,23 +167,27 @@ export function QuantumPage() {
       </p>
 
       <WarningBanner kind="info">
-        <strong>How to read this page:</strong> every “hardware result” below is clearly labeled.
-        Until real Origin Wukong output is pasted in the admin panel at the bottom, the hardware
-        columns show <em>sample data</em> — illustrative numbers in the correct format, never a
-        claim about real device behavior. Ideal results come from analytic/simulator expectations.
+        <strong>How to read this page:</strong> every measured result below is labeled with its
+        source. Real runs arrive two ways: the <code>quantum/run_experiments.py</code> pipeline
+        submits these exact circuits to Origin QCloud (simulator or Wukong hardware) and publishes
+        the counts with the site, or output can be pasted in the admin panel at the bottom. Until
+        either happens, the measured columns show <em>sample data</em> — illustrative numbers in
+        the correct format, never a claim about real device behavior. Ideal results come from
+        analytic/simulator expectations.
       </WarningBanner>
 
       <hr className="divider" />
 
       {QUANTUM_EXPERIMENTS.map((meta) => {
-        const pasted = pastedQuantum[meta.id];
         const samples = SAMPLE_RESULTS[meta.id];
+        // Precedence: locally pasted result > result published with the site > bundled sample.
+        const measured = pastedQuantum[meta.id] ?? published[meta.id] ?? samples.hardware;
         return (
           <QuantumExperimentCard
             key={meta.id}
             meta={meta}
             ideal={samples.ideal}
-            hardware={pasted ?? samples.hardware}
+            hardware={measured}
           >
             {meta.id === 'maxcut' && (
               <>

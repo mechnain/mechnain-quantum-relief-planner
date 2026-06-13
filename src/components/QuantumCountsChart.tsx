@@ -14,12 +14,15 @@ export function QuantumCountsChart({
   const entries = Object.entries(data.counts).sort((a, b) => b[1] - a[1]);
   const top = entries.slice(0, 10);
   const total = entries.reduce((s, [, c]) => s + c, 0) || 1;
+  const source = data.source ?? (data.isSample ? 'sample' : 'pasted');
+  const sourceLabel =
+    source === 'sample' ? 'sample data' : source === 'published' ? 'published run' : 'pasted result';
 
   return (
     <div>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.6rem' }}>
         <span className={`badge ${data.isSample ? 'badge-sample' : 'badge-real'}`}>
-          {data.isSample ? 'sample data' : 'pasted result'}
+          {sourceLabel}
         </span>
         <span className="badge">{data.backend}</span>
         <span className="badge">{data.shots} shots</span>

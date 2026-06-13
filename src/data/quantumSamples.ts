@@ -87,8 +87,9 @@ export const MAXCUT_EDGES: { a: number; b: number; w: number; reason: string }[]
   { a: 2, b: 4, w: 1, reason: 'long rural detour if combined' },
   { a: 3, b: 4, w: 2, reason: 'same refrigerated truck' },
 ];
-// Brute-force optimum for the instance above (and its complement): cut value 11 of 13 total weight.
-export const MAXCUT_OPTIMUM = { bitstrings: ['01100', '10011'], cutValue: 11 };
+// Brute-force optimum for the instance above (and its complement): cut value 12 of 13 total
+// weight (verified by quantum/run_experiments.py, which re-checks it on every run).
+export const MAXCUT_OPTIMUM = { bitstrings: ['01101', '10010'], cutValue: 12 };
 
 const SAMPLE_NOTE =
   'SAMPLE DATA — illustrative numbers in the correct format, shown so the page works before any real run is pasted. Not a real hardware result.';
@@ -143,12 +144,12 @@ export const SAMPLE_RESULTS: Record<QuantumExperimentId, { ideal: QuantumResultD
       backend: 'ideal simulator (QAOA p=1)',
       date: '2026-05-01',
       counts: {
-        '01100': 182, '10011': 176, '01101': 84, '10010': 81, '00100': 63,
+        '01101': 182, '10010': 176, '01100': 84, '10011': 81, '00100': 63,
         '11011': 58, '01110': 55, '10001': 52, '00101': 41, '11010': 39,
         '01000': 35, '10111': 33, others: 101,
       },
       notes:
-        'Sample ideal QAOA (p=1) distribution: probability concentrates on the optimal cut 01100/10011 but does not reach 100% — low-depth QAOA biases sampling, it does not guarantee the optimum.',
+        'Sample ideal QAOA (p=1) distribution: probability concentrates on the optimal cut 01101/10010 but does not reach 100% — low-depth QAOA biases sampling, it does not guarantee the optimum.',
       isSample: true,
     },
     hardware: {
@@ -157,7 +158,7 @@ export const SAMPLE_RESULTS: Record<QuantumExperimentId, { ideal: QuantumResultD
       backend: 'sample data (no hardware run yet)',
       date: '2026-05-01',
       counts: {
-        '01100': 117, '10011': 109, '01101': 78, '10010': 74, '00100': 66,
+        '01101': 117, '10010': 109, '01100': 78, '10011': 74, '00100': 66,
         '11011': 61, '01110': 58, '10001': 55, '00101': 49, '11010': 47,
         '01000': 44, '10111': 41, others: 201,
       },
@@ -208,7 +209,38 @@ export function parsePastedResult(json: string): QuantumResultData {
     notes: typeof obj.notes === 'string' ? obj.notes : undefined,
     limitations: typeof obj.limitations === 'string' ? obj.limitations : undefined,
     isSample: false,
+    source: 'pasted',
   };
+}
+
+/**
+ * Load real results published with the site (public/wukong-results.json,
+ * written by quantum/run_experiments.py). Returns {} when the file is absent.
+ */
+export async function fetchPublishedResults(): Promise<
+  Partial<Record<QuantumExperimentId, QuantumResultData>>
+> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}wukong-results.json`, {
+      cache: 'no-cache',
+    });
+    if (!res.ok) return {};
+    const raw = await res.json();
+    if (!Array.isArray(raw)) return {};
+    const out: Partial<Record<QuantumExperimentId, QuantumResultData>> = {};
+    for (const entry of raw) {
+      try {
+        const parsed = parsePastedResult(JSON.stringify(entry));
+        parsed.source = 'published';
+        out[parsed.experiment] = parsed;
+      } catch {
+        // Skip malformed entries; never guess at quantum data.
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 export const PASTE_TEMPLATE = `{
